@@ -1,74 +1,122 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@layer utilities {
-  /* Fade in animation */
-  .fade-in {
-    animation: fadeIn 0.6s ease-in-out;
+@theme {
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-display: var(--font-sora), system-ui, sans-serif;
+
+  /* Vietnamese-inspired color palette */
+  --color-cream: #FAF7F2;
+  --color-ivory: #F5F0E8;
+  --color-vn-red: #A62626;
+  --color-vn-red-dark: #8B1F1F;
+  --color-gold: #C9A54D;
+  --color-gold-soft: #E8D5A8;
+  --color-charcoal: #2D2522;
+  --color-warm-gray: #6B5B4F;
+  --color-terracotta: #C67650;
+  --color-deep-brown: #3D2C24;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-cream);
+}
+
+::selection {
+  background-color: rgba(201, 165, 77, 0.3);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: var(--color-ivory);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-gold-soft);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-gold);
+}
+
+/* Subtle Vietnamese textile-inspired pattern */
+.pattern-textile {
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0L30 60M0 30L60 30M15 15L45 45M45 15L15 45' stroke='%23C9A54D' stroke-width='0.5' stroke-opacity='0.08' fill='none'/%3E%3C/svg%3E");
+}
+
+/* Wave pattern for decorative elements */
+.pattern-wave {
+  background-image: url("data:image/svg+xml,%3Csvg width='100' height='20' viewBox='0 0 100 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 10 Q25 0 50 10 T100 10' stroke='%23C9A54D' stroke-width='0.5' stroke-opacity='0.1' fill='none'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
   }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  /* Smooth scroll behavior */
-  html {
-    scroll-behavior: smooth;
-  }
-
-  /* Scroll reveal animations */
-  @keyframes scrollReveal {
-    from {
-      opacity: 0;
-      transform: translateY(60px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .scroll-reveal {
-    animation: scrollReveal 1s ease-out forwards;
-  }
-
-  /* Custom scrollbar */
-  ::-webkit-scrollbar {
-    width: 10px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background-color: rgb(0 0 0);
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background-color: rgb(38 38 38);
-    border-radius: 9999px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background-color: rgb(64 64 64);
-  }
-
-  .dark ::-webkit-scrollbar-thumb:hover {
-    background-color: rgb(75 85 99);
-  }
-
-  /* Focus visible styles */
-  :focus-visible {
-    outline: 2px solid rgb(37 99 235);
-    outline-offset: 2px;
-  }
-
-  .dark :focus-visible {
-    outline-color: rgb(96 165 250);
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.6s ease-out forwards;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.6s ease-out forwards;
+}
+
+.animate-float {
+  animation: float 5s ease-in-out infinite;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 4s ease-in-out infinite;
+}
+
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
