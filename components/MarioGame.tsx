@@ -263,7 +263,7 @@ export default function MarioGame() {
           mario.x = Math.max(marioHalfWidth, Math.min(screenWidth - marioHalfWidth, mario.x));
 
           // Jump logic
-          const isJumping = this.data.get('isJumping');
+          let isJumping = this.data.get('isJumping');
           let velocityY = this.data.get('marioVelocityY');
           const gravity = this.data.get('gravity');
           const jumpVelocity = this.data.get('jumpVelocity');
@@ -271,8 +271,10 @@ export default function MarioGame() {
 
           // Detect space key press (only trigger once per press)
           if (spaceKey.isDown && !spaceWasDown && !isJumping) {
+            isJumping = true;
             this.data.set('isJumping', true);
             velocityY = jumpVelocity;
+            this.data.set('marioVelocityY', velocityY);
             mario.setTexture('mario-run');
           }
           this.data.set('spaceWasDown', spaceKey.isDown);
