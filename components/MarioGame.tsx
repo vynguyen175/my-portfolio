@@ -223,6 +223,7 @@ export default function MarioGame() {
           this.data.set('cursors', cursors);
           this.data.set('spaceKey', spaceKey);
           this.data.set('isJumping', false);
+          this.data.set('spaceWasDown', false);
           this.data.set('marioSpeed', 300);
           this.data.set('jumpVelocity', -500);
           this.data.set('marioVelocityY', 0);
@@ -266,12 +267,15 @@ export default function MarioGame() {
           let velocityY = this.data.get('marioVelocityY');
           const gravity = this.data.get('gravity');
           const jumpVelocity = this.data.get('jumpVelocity');
+          const spaceWasDown = this.data.get('spaceWasDown');
 
-          if (Phaser.Input.Keyboard.JustDown(spaceKey) && !isJumping) {
+          // Detect space key press (only trigger once per press)
+          if (spaceKey.isDown && !spaceWasDown && !isJumping) {
             this.data.set('isJumping', true);
             velocityY = jumpVelocity;
             mario.setTexture('mario-run');
           }
+          this.data.set('spaceWasDown', spaceKey.isDown);
 
           if (isJumping) {
             // Apply gravity
