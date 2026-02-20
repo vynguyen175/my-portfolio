@@ -9,6 +9,7 @@ import {
   generateCloudSprite,
   generateBushSprite,
   generateGroundTile,
+  generatePipe,
 } from '@/lib/spriteGenerator';
 
 export default function MarioGame() {
@@ -42,6 +43,7 @@ export default function MarioGame() {
           this.textures.addCanvas('cloud', generateCloudSprite());
           this.textures.addCanvas('bush', generateBushSprite());
           this.textures.addCanvas('ground-tile', generateGroundTile());
+          this.textures.addCanvas('pipe', generatePipe());
 
           // Coin animation frames
           const coinCanvases = generateCoinFrames();
@@ -181,6 +183,12 @@ export default function MarioGame() {
             { x: startX + boxSpacing * 3, y: boxY, label: 'contact' },
           ];
 
+          // Create pipes array to store pipe data for collision
+          const pipes: any[] = [];
+          const pipeScale = w < 768 ? 2 : 2.5;
+          const pipeHeight = 48 * pipeScale; // Pipe sprite is 16 pixels tall at 3x render = 48, then scaled
+          const pipeY = brickTop - pipeHeight / 2; // Position pipe on ground
+
           boxPositions.forEach((pos) => {
             const box = this.add.sprite(pos.x, pos.y, 'lucky-box');
             box.setScale(boxScale);
@@ -197,7 +205,23 @@ export default function MarioGame() {
               strokeThickness: 4,
               align: 'center',
             }).setOrigin(0.5, 0);
+
+            // Create pipe below each box
+            const pipe = this.add.sprite(pos.x, pipeY, 'pipe');
+            pipe.setScale(pipeScale);
+            pipe.setDepth(50);
+            pipe.setData('label', pos.label);
+            pipes.push({
+              sprite: pipe,
+              x: pos.x,
+              topY: pipeY - pipeHeight / 2, // Top of the pipe
+              width: 36 * pipeScale, // Pipe sprite is 12 pixels wide at 3x render = 36
+              label: pos.label,
+            });
           });
+
+          this.data.set('pipes', pipes);
+          this.data.set('pipeTopY', pipeY - pipeHeight / 2); // Y position of pipe top for landing
 
           this.input.on('pointerdown', (pointer: any) => {
             const clickedBox = boxes.getChildren().find((child: any) => {
@@ -225,9 +249,10 @@ export default function MarioGame() {
           this.data.set('isJumping', false);
           this.data.set('spaceWasDown', false);
           this.data.set('marioSpeed', 300);
-          this.data.set('jumpVelocity', -500);
+          this.data.set('jumpVelocity', -600);
           this.data.set('marioVelocityY', 0);
           this.data.set('gravity', 1200);
+          this.data.set('currentFloor', 'ground'); // 'ground' or 'pipe'
         }
 
         update(_time: number, delta: number) {
@@ -237,12 +262,15 @@ export default function MarioGame() {
           const isWalking = this.data.get('isWalking');
           const groundY = this.data.get('marioGroundY');
           const boxes = this.data.get('boxes');
+          const pipes = this.data.get('pipes');
 
           if (!mario || !cursors || isWalking) return;
 
           const speed = this.data.get('marioSpeed');
           const deltaSeconds = delta / 1000;
           const screenWidth = this.scale.width;
+          const marioHalfHeight = (mario.height * mario.scaleY) / 2;
+          const marioHalfWidth = (mario.width * mario.scaleX) / 2;
 
           // Horizontal movement
           let isMoving = false;
@@ -259,7 +287,6 @@ export default function MarioGame() {
           }
 
           // Keep Mario within screen bounds
-          const marioHalfWidth = (mario.width * mario.scaleX) / 2;
           mario.x = Math.max(marioHalfWidth, Math.min(screenWidth - marioHalfWidth, mario.x));
 
           // Jump logic
@@ -268,6 +295,7 @@ export default function MarioGame() {
           const gravity = this.data.get('gravity');
           const jumpVelocity = this.data.get('jumpVelocity');
           const spaceWasDown = this.data.get('spaceWasDown');
+          let currentFloor = this.data.get('currentFloor');
 
           // Detect space key press (only trigger once per press)
           if (spaceKey.isDown && !spaceWasDown && !isJumping) {
@@ -284,6 +312,11 @@ export default function MarioGame() {
             velocityY += gravity * deltaSeconds;
             mario.y += velocityY * deltaSeconds;
 
+            const marioBottom = mario.y + marioHalfHeight;
+            const marioLeft = mario.x - marioHalfWidth;
+            const marioRight = mario.x + marioHalfWidth;
+            const marioTop = mario.y - marioHalfHeight;
+
             // Check for box collision while jumping upward
             if (velocityY < 0) {
               const boxChildren = boxes.getChildren();
@@ -295,10 +328,6 @@ export default function MarioGame() {
                   top: boxSprite.y - (boxSprite.height * boxSprite.scaleY) / 2,
                   bottom: boxSprite.y + (boxSprite.height * boxSprite.scaleY) / 2,
                 };
-
-                const marioTop = mario.y - (mario.height * mario.scaleY) / 2;
-                const marioLeft = mario.x - (mario.width * mario.scaleX) / 2;
-                const marioRight = mario.x + (mario.width * mario.scaleX) / 2;
 
                 // Check if Mario's head hits the box from below
                 if (
@@ -316,14 +345,64 @@ export default function MarioGame() {
               }
             }
 
+            // Check for pipe collision while falling
+            if (velocityY > 0 && pipes) {
+              for (const pipe of pipes) {
+                const pipeLeft = pipe.x - pipe.width / 2;
+                const pipeRight = pipe.x + pipe.width / 2;
+                const pipeTop = pipe.topY;
+
+                // Check if Mario lands on top of pipe
+                if (
+                  marioRight > pipeLeft &&
+                  marioLeft < pipeRight &&
+                  marioBottom >= pipeTop &&
+                  marioBottom <= pipeTop + 30 // Small tolerance
+                ) {
+                  // Land on pipe
+                  mario.y = pipeTop - marioHalfHeight;
+                  this.data.set('isJumping', false);
+                  this.data.set('currentFloor', 'pipe');
+                  velocityY = 0;
+                  this.data.set('marioVelocityY', velocityY);
+                  return;
+                }
+              }
+            }
+
             // Land on ground
             if (mario.y >= groundY) {
               mario.y = groundY;
               this.data.set('isJumping', false);
+              this.data.set('currentFloor', 'ground');
               velocityY = 0;
             }
 
             this.data.set('marioVelocityY', velocityY);
+          } else {
+            // Not jumping - check if Mario walks off a pipe
+            if (currentFloor === 'pipe' && pipes) {
+              let onPipe = false;
+              const marioLeft = mario.x - marioHalfWidth;
+              const marioRight = mario.x + marioHalfWidth;
+
+              for (const pipe of pipes) {
+                const pipeLeft = pipe.x - pipe.width / 2;
+                const pipeRight = pipe.x + pipe.width / 2;
+
+                if (marioRight > pipeLeft && marioLeft < pipeRight) {
+                  onPipe = true;
+                  break;
+                }
+              }
+
+              // If Mario walked off the pipe, start falling
+              if (!onPipe) {
+                this.data.set('isJumping', true);
+                this.data.set('marioVelocityY', 0);
+                this.data.set('currentFloor', 'ground');
+              }
+            }
           }
 
           // Set to idle if not moving and on ground
