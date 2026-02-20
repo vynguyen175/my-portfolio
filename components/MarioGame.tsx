@@ -216,10 +216,115 @@ export default function MarioGame() {
           this.data.set('cloudGroup', cloudGroup);
           this.data.set('groundTilesGroup', groundTilesGroup);
           this.data.set('bushGroup', bushGroup);
+
+          // Keyboard controls setup
+          const cursors = this.input.keyboard!.createCursorKeys();
+          const spaceKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+          this.data.set('cursors', cursors);
+          this.data.set('spaceKey', spaceKey);
+          this.data.set('isJumping', false);
+          this.data.set('marioSpeed', 300);
+          this.data.set('jumpVelocity', -500);
+          this.data.set('marioVelocityY', 0);
+          this.data.set('gravity', 1200);
         }
 
-        update() {
-          // Using tweens for all movement, no physics update needed
+        update(_time: number, delta: number) {
+          const mario = this.data.get('mario');
+          const cursors = this.data.get('cursors');
+          const spaceKey = this.data.get('spaceKey');
+          const isWalking = this.data.get('isWalking');
+          const groundY = this.data.get('marioGroundY');
+          const boxes = this.data.get('boxes');
+
+          if (!mario || !cursors || isWalking) return;
+
+          const speed = this.data.get('marioSpeed');
+          const deltaSeconds = delta / 1000;
+          const screenWidth = this.scale.width;
+
+          // Horizontal movement
+          let isMoving = false;
+          if (cursors.left.isDown) {
+            mario.x -= speed * deltaSeconds;
+            mario.setTexture('mario-run');
+            mario.setFlipX(true);
+            isMoving = true;
+          } else if (cursors.right.isDown) {
+            mario.x += speed * deltaSeconds;
+            mario.setTexture('mario-run');
+            mario.setFlipX(false);
+            isMoving = true;
+          }
+
+          // Keep Mario within screen bounds
+          const marioHalfWidth = (mario.width * mario.scaleX) / 2;
+          mario.x = Math.max(marioHalfWidth, Math.min(screenWidth - marioHalfWidth, mario.x));
+
+          // Jump logic
+          const isJumping = this.data.get('isJumping');
+          let velocityY = this.data.get('marioVelocityY');
+          const gravity = this.data.get('gravity');
+          const jumpVelocity = this.data.get('jumpVelocity');
+
+          if (Phaser.Input.Keyboard.JustDown(spaceKey) && !isJumping) {
+            this.data.set('isJumping', true);
+            velocityY = jumpVelocity;
+            mario.setTexture('mario-run');
+          }
+
+          if (isJumping) {
+            // Apply gravity
+            velocityY += gravity * deltaSeconds;
+            mario.y += velocityY * deltaSeconds;
+
+            // Check for box collision while jumping upward
+            if (velocityY < 0) {
+              const boxChildren = boxes.getChildren();
+              for (const box of boxChildren) {
+                const boxSprite = box as any;
+                const boxBounds = {
+                  left: boxSprite.x - (boxSprite.width * boxSprite.scaleX) / 2,
+                  right: boxSprite.x + (boxSprite.width * boxSprite.scaleX) / 2,
+                  top: boxSprite.y - (boxSprite.height * boxSprite.scaleY) / 2,
+                  bottom: boxSprite.y + (boxSprite.height * boxSprite.scaleY) / 2,
+                };
+
+                const marioTop = mario.y - (mario.height * mario.scaleY) / 2;
+                const marioLeft = mario.x - (mario.width * mario.scaleX) / 2;
+                const marioRight = mario.x + (mario.width * mario.scaleX) / 2;
+
+                // Check if Mario's head hits the box from below
+                if (
+                  marioTop <= boxBounds.bottom &&
+                  marioTop >= boxBounds.top - 20 &&
+                  marioRight > boxBounds.left &&
+                  marioLeft < boxBounds.right &&
+                  !boxSprite.getData('hit')
+                ) {
+                  // Hit the box!
+                  this.data.set('isWalking', true); // Prevent further input
+                  this.triggerBoxHit(mario, boxSprite, groundY);
+                  return;
+                }
+              }
+            }
+
+            // Land on ground
+            if (mario.y >= groundY) {
+              mario.y = groundY;
+              this.data.set('isJumping', false);
+              velocityY = 0;
+            }
+
+            this.data.set('marioVelocityY', velocityY);
+          }
+
+          // Set to idle if not moving and on ground
+          if (!isMoving && !isJumping) {
+            mario.setTexture('mario-idle');
+            mario.setFlipX(false);
+          }
         }
 
         marioWalkToBox(mario: any, box: any, Phaser: any) {
