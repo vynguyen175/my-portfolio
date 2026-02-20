@@ -66,4 +66,15 @@ export const projects: Project[] = [
     liveUrl: "https://gameboxd-web-app.vercel.app/",
     featured: true,
   },
+  {
+    id: 6,
+    title: "Gomoku - Five in a Row",
+    description: "A responsive strategy board game featuring local multiplayer and AI opponents powered by the Minimax algorithm with three difficulty levels.",
+    longDescription: "Gomoku is a classic strategy board game where players compete to align five stones in a row. This implementation features both local multiplayer for playing with friends and challenging AI opponents powered by the Minimax algorithm with Alpha-Beta pruning optimization. The game offers three difficulty levels to accommodate players of all skill levels. Built with a mobile-first responsive design using Tailwind CSS, ensuring a seamless gaming experience across all devices.",
+    category: "Game Development",
+    techStack: ["JavaScript", "HTML5", "CSS3", "Tailwind CSS", "Minimax Algorithm", "Alpha-Beta Pruning"],
+    githubUrl: "https://github.com/vynguyen175/Gomoku",
+    liveUrl: "https://vynguyen175.github.io/Gomoku/web/",
+    featured: true,
+  },
 ];
