@@ -77,4 +77,15 @@ export const projects: Project[] = [
     liveUrl: "https://vynguyen175.github.io/Gomoku/web/",
     featured: true,
   },
+  {
+    id: 7,
+    title: "Sushi Rock",
+    description: "Modern restaurant website for a Japanese dining establishment with online ordering, reservations, and multi-location support.",
+    longDescription: "Sushi Rock is a professional restaurant website for a premium Japanese dining establishment with two locations in midtown Toronto. The platform features an integrated online ordering system for pickup, table reservations, and seamless third-party delivery integration with Uber Eats. Built with a focus on showcasing the restaurant's 10+ years of culinary expertise, fresh daily ingredients, and authentic Japanese cuisine. The site includes location information with Google Maps integration, operating hours, and an elegant design that reflects the restaurant's premium positioning.",
+    category: "Full Stack",
+    techStack: ["Next.js", "TypeScript", "React", "Tailwind CSS", "Vercel"],
+    githubUrl: "https://github.com/A-Shalchian/sushi-rock",
+    liveUrl: "https://sushirock.vercel.app/",
+    featured: true,
+  },
 ];

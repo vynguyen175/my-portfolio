@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   generateLuckyBoxSprite,
@@ -9,20 +9,43 @@ import {
   generateCloudSprite,
   generateBushSprite,
   generateGroundTile,
-  generatePipe,
 } from '@/lib/spriteGenerator';
 
 export default function MarioGame() {
   const gameRef = useRef<any>(null);
+  const initializingRef = useRef<boolean>(false);
   const router = useRouter();
+  const routerRef = useRef(router);
+
+  // Keep router ref updated
+  useEffect(() => {
+    routerRef.current = router;
+  }, [router]);
 
   useEffect(() => {
     const initGame = async () => {
+      // Prevent multiple simultaneous initializations
+      if (initializingRef.current) return;
+      initializingRef.current = true;
+
       // Always destroy previous game before creating new one
       if (gameRef.current) {
-        gameRef.current.destroy(true);
+        try {
+          gameRef.current.destroy(true);
+        } catch (e) {
+          console.log('Game cleanup error:', e);
+        }
         gameRef.current = null;
       }
+
+      // Clear the container
+      const container = document.getElementById('game-container');
+      if (container) {
+        container.innerHTML = '';
+      }
+
+      // Small delay to ensure DOM is ready
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       const PhaserModule = await import('phaser');
       const Phaser = PhaserModule.default || PhaserModule;
@@ -36,6 +59,7 @@ export default function MarioGame() {
           // Load Mario sprites
           this.load.image('mario-idle', '/sprites/mario-idle.png');
           this.load.image('mario-run', '/sprites/mario-run.png');
+          this.load.image('pipe', '/sprites/pipe.png');
 
           // Environment sprites
           this.textures.addCanvas('lucky-box', generateLuckyBoxSprite());
@@ -43,7 +67,6 @@ export default function MarioGame() {
           this.textures.addCanvas('cloud', generateCloudSprite());
           this.textures.addCanvas('bush', generateBushSprite());
           this.textures.addCanvas('ground-tile', generateGroundTile());
-          this.textures.addCanvas('pipe', generatePipe());
 
           // Coin animation frames
           const coinCanvases = generateCoinFrames();
@@ -185,10 +208,19 @@ export default function MarioGame() {
 
           // Create pipes array to store pipe data for collision
           const pipes: any[] = [];
-          const pipeScale = w < 768 ? 2 : 2.5;
-          const pipeHeight = 48 * pipeScale; // Pipe sprite is 16 pixels tall at 3x render = 48, then scaled
-          const pipeY = brickTop - pipeHeight / 2; // Position pipe on ground
 
+          // Pipe.png is 1152x1152 pixels - scale it down appropriately
+          // Make pipes bigger and place them ON the ground
+          const pipeScale = w < 768 ? 0.12 : 0.14;
+          const pipeImageSize = 1152;
+          const pipeDisplaySize = pipeImageSize * pipeScale; // Visual size of pipe (~138-161px)
+
+          // Position pipe so its bottom sits on the ground (brickTop)
+          // Pipe center Y = brickTop - (pipeHeight / 2)
+          const pipeY = brickTop - pipeDisplaySize / 2;
+          const pipeTopY = brickTop - pipeDisplaySize; // Top of the pipe where Mario stands
+
+          // Create boxes first
           boxPositions.forEach((pos) => {
             const box = this.add.sprite(pos.x, pos.y, 'lucky-box');
             box.setScale(boxScale);
@@ -205,8 +237,10 @@ export default function MarioGame() {
               strokeThickness: 4,
               align: 'center',
             }).setOrigin(0.5, 0);
+          });
 
-            // Create pipe below each box
+          // Create 4 pipes on the ground, one under each box
+          boxPositions.forEach((pos) => {
             const pipe = this.add.sprite(pos.x, pipeY, 'pipe');
             pipe.setScale(pipeScale);
             pipe.setDepth(50);
@@ -214,24 +248,15 @@ export default function MarioGame() {
             pipes.push({
               sprite: pipe,
               x: pos.x,
-              topY: pipeY - pipeHeight / 2, // Top of the pipe
-              width: 36 * pipeScale, // Pipe sprite is 12 pixels wide at 3x render = 36
+              topY: pipeTopY,
+              width: pipeDisplaySize,
+              height: pipeDisplaySize,
               label: pos.label,
             });
           });
 
           this.data.set('pipes', pipes);
-          this.data.set('pipeTopY', pipeY - pipeHeight / 2); // Y position of pipe top for landing
-
-          this.input.on('pointerdown', (pointer: any) => {
-            const clickedBox = boxes.getChildren().find((child: any) => {
-              return Phaser.Math.Distance.Between(pointer.x, pointer.y, child.x, child.y) < 60;
-            });
-
-            if (clickedBox) {
-              this.marioWalkToBox(mario, clickedBox, Phaser);
-            }
-          });
+          this.data.set('pipeTopY', pipeTopY); // Y position of pipe tops for landing
 
           this.data.set('mario', mario);
           this.data.set('boxes', boxes);
@@ -249,7 +274,7 @@ export default function MarioGame() {
           this.data.set('isJumping', false);
           this.data.set('spaceWasDown', false);
           this.data.set('marioSpeed', 300);
-          this.data.set('jumpVelocity', -600);
+          this.data.set('jumpVelocity', -720);
           this.data.set('marioVelocityY', 0);
           this.data.set('gravity', 1200);
           this.data.set('currentFloor', 'ground'); // 'ground' or 'pipe'
@@ -502,20 +527,31 @@ export default function MarioGame() {
           }
           this.spawnCoin(box);
 
-          // Mario falls back down to ground level (never below bricks)
+          // Find the pipe under this box to land on it
+          const pipes = this.data.get('pipes');
+          const boxLabel = box.getData('label');
+          const marioHalfHeight = (mario.height * mario.scaleY) / 2;
+
+          // Find matching pipe by label
+          const targetPipe = pipes?.find((p: any) => p.label === boxLabel);
+          const landingY = targetPipe
+            ? targetPipe.topY - marioHalfHeight
+            : groundY;
+
+          // Mario falls back down to the pipe
           this.tweens.add({
             targets: mario,
-            y: groundY,
+            y: landingY,
             duration: 350,
             ease: 'Cubic.easeIn',
             onComplete: () => {
-              // Ensure Mario is exactly at ground level
-              mario.setY(groundY);
+              mario.setY(landingY);
               mario.setTexture('mario-idle');
               mario.setFlipX(false);
               this.data.set('isWalking', false);
+              this.data.set('currentFloor', targetPipe ? 'pipe' : 'ground');
               const label = box.getData('label');
-              router.push(`/${label}`);
+              routerRef.current.push(`/${label}`);
             },
           });
         }
@@ -626,6 +662,7 @@ export default function MarioGame() {
 
       // Store observer for cleanup
       (gameRef as any).themeObserver = observer;
+      initializingRef.current = false;
     };
 
     initGame();
@@ -636,11 +673,16 @@ export default function MarioGame() {
         (gameRef as any).themeObserver.disconnect();
       }
       if (gameRef.current) {
-        gameRef.current.destroy(true);
+        try {
+          gameRef.current.destroy(true);
+        } catch (e) {
+          console.log('Game cleanup error:', e);
+        }
         gameRef.current = null;
       }
+      initializingRef.current = false;
     };
-  }, [router]);
+  }, []);
 
   return (
     <div
